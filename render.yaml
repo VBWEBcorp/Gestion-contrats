@@ -4,10 +4,15 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: |
-      echo "=== DÉMARRAGE DE L'APPLICATION ===" &&
+      echo "=== VÉRIFICATION DE L'ENVIRONNEMENT ===" &&
+      echo "Python version:" &&
+      python --version &&
+      echo "Variables d'environnement disponibles:" &&
+      env | grep -i "database\|postgres" &&
+      echo "=== INITIALISATION DE LA BASE DE DONNÉES ===" &&
       python init_db.py &&
-      echo "=== LANCEMENT DU SERVEUR ===" &&
-      gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug
+      echo "=== DÉMARRAGE DU SERVEUR ===" &&
+      gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
@@ -21,12 +26,14 @@ services:
         fromDatabase:
           name: gestion-contrats-db
           property: connectionString
-      - key: PORT
-        value: 10000
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: gestion-contrats-db
+          property: connectionString
 
 databases:
   - name: gestion-contrats-db
     databaseName: gestion_contrats
     user: gestion_contrats
     plan: free
-    ipAllowList: [] # only allow internal connections
+    ipAllowList: []

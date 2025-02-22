@@ -14,16 +14,23 @@ import io
 app = Flask(__name__)
 
 # Configuration de la base de données
+print("=== CONFIGURATION DE LA BASE DE DONNÉES ===")
 DATABASE_URL = os.environ.get('DATABASE_URL')
+print(f"DATABASE_URL brute: {DATABASE_URL}")
 
 if not DATABASE_URL:
-    raise RuntimeError('DATABASE_URL non définie. La base de données PostgreSQL est requise.')
+    DATABASE_URL = os.environ.get('POSTGRES_URL')  # Essayer une alternative
+    print(f"Tentative avec POSTGRES_URL: {DATABASE_URL}")
+
+if not DATABASE_URL:
+    raise RuntimeError('Aucune URL de base de données trouvée. Ni DATABASE_URL ni POSTGRES_URL ne sont définis.')
 
 # Correction de l'URL pour PostgreSQL
 if DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    print(f"URL corrigée pour PostgreSQL: {DATABASE_URL}")
 
-print(f"Configuration de la base de données avec l'URL: {DATABASE_URL}")
+print(f"URL finale de la base de données: {DATABASE_URL}")
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'votre_clé_secrète_ici')
@@ -31,16 +38,25 @@ app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'votre_clé_secrète_ici
 db.init_app(app)
 
 def init_db():
-    print("Début de l'initialisation de la base de données...")
+    print("=== DÉBUT INITIALISATION BASE DE DONNÉES ===")
     with app.app_context():
         try:
-            # Créer toutes les tables
-            db.create_all()
-            print("Tables créées avec succès")
+            # Vérifier la connexion
+            connection = db.engine.connect()
+            print("✓ Connexion à la base de données établie")
+            connection.close()
 
-            # Vérifier si les types de prestation existent déjà
+            # Créer les tables
+            db.create_all()
+            print("✓ Tables créées avec succès")
+
+            # Vérifier les tables créées
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+            print(f"Tables disponibles: {tables}")
+
+            # Ajouter les types de prestation par défaut
             if not TypePrestation.query.first():
-                print("Ajout des types de prestation par défaut...")
                 types = [
                     TypePrestation(nom="Mensuel"),
                     TypePrestation(nom="Trimestriel"),
@@ -49,12 +65,15 @@ def init_db():
                 ]
                 db.session.add_all(types)
                 db.session.commit()
-                print("Types de prestation ajoutés avec succès")
-            else:
-                print("Les types de prestation existent déjà")
+                print("✓ Types de prestation ajoutés")
+            
+            print("=== INITIALISATION TERMINÉE AVEC SUCCÈS ===")
+            return True
+
         except Exception as e:
-            print(f"Erreur lors de l'initialisation de la base de données: {str(e)}")
-            db.session.rollback()
+            print(f"✗ ERREUR lors de l'initialisation: {str(e)}")
+            if 'db' in locals():
+                db.session.rollback()
             raise
 
 # Initialiser le planificateur de tâches
