@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: gestion-contrats
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gestion-contrats-db
+          property: connectionString
+
+databases:
+  - name: gestion-contrats-db
+    plan: free

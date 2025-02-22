@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Tableau de bord</h2>
+    
+    <div class="row g-4">
+        <!-- CA Mensuel -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Chiffre d'affaires mensuel</h5>
+                    <h2 class="display-6">{{ '%.2f €'|format(ca_mensuel) }}</h2>
+                    <small class="text-muted">Inclut les contrats mensuels et annuels (proratisés)</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contrats actifs -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Contrats actifs</h5>
+                    <h2 class="display-6">{{ nombre_contrats }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Répartition des prestations -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Répartition des prestations</h5>
+                    <div style="height: 300px;">
+                        <canvas id="prestationsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Évolution du CA mensuel -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Évolution du CA mensuel</h5>
+                    <div style="height: 300px;">
+                        <canvas id="caChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Évolution du nombre de contrats -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Évolution du nombre de contrats</h5>
+                    <div style="height: 300px;">
+                        <canvas id="contratsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Comparaison CA / Contrats -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Comparaison CA / Contrats</h5>
+                    <div style="height: 300px;">
+                        <canvas id="comparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boutons d'export -->
+    <div class="mt-4 mb-4">
+        <button class="btn btn-primary" onclick="exportData('csv')">
+            <i class="bi bi-download"></i> Exporter en CSV
+        </button>
+        <button class="btn btn-outline-primary" onclick="exportData('excel')">
+            <i class="bi bi-file-earmark-excel"></i> Exporter en Excel
+        </button>
+    </div>
+</div>
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// Configuration commune pour les graphiques
+const chartConfig = {
+    responsive: true,
+    maintainAspectRatio: false
+};
+
+// Couleurs
+const colors = {
+    blue: '#0d6efd',
+    lightBlue: '#7cc',
+    gray: '#6c757d'
+};
+
+// Graphique de répartition des prestations
+const prestationsCtx = document.getElementById('prestationsChart').getContext('2d');
+new Chart(prestationsCtx, {
+    type: 'pie',
+    data: {
+        labels: {{ prestations_labels|tojson }},
+        datasets: [{
+            data: {{ prestations_data|tojson }},
+            backgroundColor: ['#0d6efd', '#7cc', '#aaf', '#ddf']
+        }]
+    },
+    options: chartConfig
+});
+
+// Graphique d'évolution du CA
+const caCtx = document.getElementById('caChart').getContext('2d');
+new Chart(caCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ ca_labels|tojson }},
+        datasets: [{
+            label: 'CA Mensuel',
+            data: {{ ca_data|tojson }},
+            backgroundColor: colors.blue
+        }]
+    },
+    options: {
+        ...chartConfig,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: value => value + ' €'
+                }
+            }
+        }
+    }
+});
+
+// Graphique d'évolution des contrats
+const contratsCtx = document.getElementById('contratsChart').getContext('2d');
+new Chart(contratsCtx, {
+    type: 'line',
+    data: {
+        labels: {{ contrats_labels|tojson }},
+        datasets: [{
+            label: 'Nombre de contrats',
+            data: {{ contrats_data|tojson }},
+            borderColor: colors.blue,
+            tension: 0.4
+        }]
+    },
+    options: chartConfig
+});
+
+// Graphique de comparaison CA/Contrats
+const comparisonCtx = document.getElementById('comparisonChart').getContext('2d');
+new Chart(comparisonCtx, {
+    type: 'line',
+    data: {
+        labels: {{ comparison_labels|tojson }},
+        datasets: [{
+            label: 'CA Mensuel',
+            data: {{ ca_data|tojson }},
+            borderColor: colors.blue,
+            yAxisID: 'y'
+        }, {
+            label: 'Nombre de contrats',
+            data: {{ contrats_data|tojson }},
+            borderColor: colors.gray,
+            yAxisID: 'y1'
+        }]
+    },
+    options: {
+        ...chartConfig,
+        scales: {
+            y: {
+                type: 'linear',
+                position: 'left',
+                ticks: {
+                    callback: value => value + ' €'
+                }
+            },
+            y1: {
+                type: 'linear',
+                position: 'right',
+                grid: {
+                    drawOnChartArea: false
+                }
+            }
+        }
+    }
+});
+
+// Fonction d'export
+function exportData(format) {
+    window.location.href = `/export-stats?format=${format}`;
+}
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Historique des Clients</h1>
+    
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th>Entreprise</th>
+                    <th>Montant</th>
+                    <th>Fréquence</th>
+                    <th>Période du contrat</th>
+                    <th>Prestations</th>
+                    <th>Date d'archivage</th>
+                    <th>Commentaire</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td>{{ client.nom }}</td>
+                    <td>{{ client.prenom }}</td>
+                    <td>{{ client.entreprise }}</td>
+                    <td>{{ "%.2f"|format(client.montant) }}€</td>
+                    <td>{{ client.frequence }}</td>
+                    <td>
+                        {{ client.date_debut.strftime('%d/%m/%Y') }} - 
+                        {{ client.date_fin.strftime('%d/%m/%Y') if client.date_fin else 'Non définie' }}
+                    </td>
+                    <td>
+                        {% set prestations = [] %}
+                        {% for prestation in client.prestations %}
+                            {% set _ = prestations.append(prestation.nom) %}
+                        {% endfor %}
+                        {{ prestations|join(', ') }}
+                    </td>
+                    <td>{{ client.date_archivage.strftime('%d/%m/%Y') }}</td>
+                    <td>
+                        <span id="comment-text-{{ client.id }}">{{ client.commentaire or '' }}</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="editComment({{ client.id }})">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-success" onclick="restoreClient({{ client.id }})">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal pour éditer le commentaire -->
+<div class="modal fade" id="commentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Modifier le commentaire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="commentForm">
+                    <input type="hidden" id="commentClientId" name="client_id">
+                    <div class="mb-3">
+                        <label for="commentText" class="form-label">Commentaire</label>
+                        <textarea class="form-control" id="commentText" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" onclick="saveComment()">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function editComment(clientId) {
+    fetch(`/client/${clientId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('commentClientId').value = clientId;
+            document.getElementById('commentText').value = data.commentaire || '';
+            new bootstrap.Modal(document.getElementById('commentModal')).show();
+        });
+}
+
+function saveComment() {
+    const clientId = document.getElementById('commentClientId').value;
+    const commentText = document.getElementById('commentText').value;
+    
+    fetch(`/client/${clientId}/comment`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            commentaire: commentText
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('comment-text-' + clientId).textContent = commentText;
+            bootstrap.Modal.getInstance(document.getElementById('commentModal')).hide();
+        }
+    });
+}
+
+function restoreClient(clientId) {
+    if (confirm('Voulez-vous vraiment restaurer ce client ?')) {
+        fetch(`/client/${clientId}/restore`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
