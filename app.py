@@ -15,12 +15,15 @@ app = Flask(__name__)
 
 # Configuration de la base de données
 DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
-    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
 
 if not DATABASE_URL:
-    raise RuntimeError('DATABASE_URL environment variable is not set!')
+    raise RuntimeError('DATABASE_URL non définie. La base de données PostgreSQL est requise.')
 
+# Correction de l'URL pour PostgreSQL
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+print(f"Configuration de la base de données avec l'URL: {DATABASE_URL}")
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'votre_clé_secrète_ici')
