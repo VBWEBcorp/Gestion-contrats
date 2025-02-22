@@ -11,15 +11,7 @@ services:
       echo "Variables d'environnement disponibles:" &&
       env | grep -i "database\|postgres" &&
       echo "=== INITIALISATION DE LA BASE DE DONNÉES ===" &&
-      python -c "
-      from app import app, db, init_db
-      with app.app_context():
-          print('Création des tables...')
-          db.create_all()
-          print('Tables créées avec succès')
-          init_db()
-          print('Initialisation terminée')
-      " &&
+      python init_render_db.py &&
       echo "=== DÉMARRAGE DU SERVEUR ===" &&
       gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug --timeout 120
     envVars:
