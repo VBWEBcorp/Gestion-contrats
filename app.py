@@ -14,20 +14,16 @@ import io
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'votre_clé_secrète_ici')
 
-# Configuration de la base de données
+# Database configuration
 if os.environ.get('DATABASE_URL'):
-    # Configuration pour Render (PostgreSQL)
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL').replace('postgres://', 'postgresql://')
+    # Configuration for Render (PostgreSQL)
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 else:
-    # Configuration locale (SQLite)
+    # Local configuration (SQLite)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gestion_contrats.db'
 
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
-
-# Initialiser le planificateur de tâches
-scheduler = BackgroundScheduler()
-scheduler.add_job(func=lambda: check_expired_contracts(app), trigger="interval", hours=24)
-scheduler.start()
 
 def init_db():
     with app.app_context():
@@ -44,7 +40,16 @@ def init_db():
                 TypePrestation(nom="Annuel")
             ]
             db.session.add_all(default_types)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                print(f"Error adding default types: {e}")
+
+# Initialize scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(func=lambda: check_expired_contracts(app), trigger="interval", hours=24)
+scheduler.start()
 
 @app.route('/')
 def index():
