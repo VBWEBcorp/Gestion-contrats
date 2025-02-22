@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, Response
+from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
+from dotenv import load_dotenv
 from extensions import db
 from models import Client, TypePrestation
 from sqlalchemy import inspect, text
@@ -10,13 +12,14 @@ from dateutil.relativedelta import relativedelta
 import csv
 from openpyxl import Workbook
 import io
-from dotenv import load_dotenv
 
 # Charger les variables d'environnement depuis le fichier .env
 load_dotenv()
 
+# Initialisation de Flask
 app = Flask(__name__)
 
+# Configuration de la base de données
 def configure_database():
     print("=== CONFIGURATION DE LA BASE DE DONNÉES ===")
     database_url = os.environ.get('DATABASE_URL')
@@ -29,13 +32,15 @@ def configure_database():
         raise ValueError("DATABASE_URL n'est pas définie!")
     
     print(f"URL finale de la base de données: {database_url}")
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    
     return database_url
 
-# Configuration initiale
-configure_database()
+# Configuration de l'application
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-key-dev')
+app.config['SQLALCHEMY_DATABASE_URI'] = configure_database()
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialisation des extensions
+db.init_app(app)
 
 def init_db():
     """Initialise la base de données."""
