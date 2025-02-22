@@ -10,73 +10,52 @@ from dateutil.relativedelta import relativedelta
 import csv
 from openpyxl import Workbook
 import io
+from dotenv import load_dotenv
+
+# Charger les variables d'environnement depuis le fichier .env
+load_dotenv()
 
 app = Flask(__name__)
 
-# Configuration de la base de données
-print("=== CONFIGURATION DE LA BASE DE DONNÉES ===")
-DATABASE_URL = os.environ.get('DATABASE_URL')
-print(f"DATABASE_URL brute: {DATABASE_URL}")
+def configure_database():
+    print("=== CONFIGURATION DE LA BASE DE DONNÉES ===")
+    database_url = os.environ.get('DATABASE_URL')
+    print(f"DATABASE_URL brute: {database_url}")
+    
+    if database_url and database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    
+    if not database_url:
+        raise ValueError("DATABASE_URL n'est pas définie!")
+    
+    print(f"URL finale de la base de données: {database_url}")
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    return database_url
 
-if not DATABASE_URL:
-    DATABASE_URL = os.environ.get('POSTGRES_URL')  # Essayer une alternative
-    print(f"Tentative avec POSTGRES_URL: {DATABASE_URL}")
-
-if not DATABASE_URL:
-    raise RuntimeError('Aucune URL de base de données trouvée. Ni DATABASE_URL ni POSTGRES_URL ne sont définis.')
-
-# Correction de l'URL pour PostgreSQL
-if DATABASE_URL.startswith('postgres://'):
-    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-    print(f"URL corrigée pour PostgreSQL: {DATABASE_URL}")
-
-print(f"URL finale de la base de données: {DATABASE_URL}")
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'votre_clé_secrète_ici')
-
-db.init_app(app)
+# Configuration initiale
+configure_database()
 
 def init_db():
-    print("=== DÉBUT INITIALISATION BASE DE DONNÉES ===")
-    with app.app_context():
-        try:
-            # Vérifier la connexion
-            connection = db.engine.connect()
-            print("✓ Connexion à la base de données établie")
-            connection.close()
-
-            # Créer les tables
-            db.create_all()
-            print("✓ Tables créées avec succès")
-
-            # Vérifier les tables créées
+    """Initialise la base de données."""
+    try:
+        print("=== DEBUT INITIALISATION BASE DE DONNEES ===")
+        
+        # Création des tables
+        with app.app_context():
             inspector = inspect(db.engine)
-            tables = inspector.get_table_names()
-            print(f"Tables disponibles: {tables}")
-
-            # Ajouter les types de prestation par défaut si la table est vide
-            if not TypePrestation.query.first():
-                types = [
-                    TypePrestation(nom="Mensuel"),
-                    TypePrestation(nom="Trimestriel"),
-                    TypePrestation(nom="Semestriel"),
-                    TypePrestation(nom="Annuel")
-                ]
-                db.session.add_all(types)
-                db.session.commit()
-                print("✓ Types de prestation ajoutés")
+            if not inspector.has_table("client"):
+                db.create_all()
+                print("[OK] Tables créées avec succès")
             else:
-                print("✓ Types de prestation déjà existants")
-            
-            print("=== INITIALISATION TERMINÉE AVEC SUCCÈS ===")
-            return True
-
-        except Exception as e:
-            print(f"✗ ERREUR lors de l'initialisation: {str(e)}")
-            if 'db' in locals():
-                db.session.rollback()
-            raise
+                print("[OK] Les tables existent déjà")
+        
+        print("[OK] Connexion à la base de données établie")
+        
+    except Exception as e:
+        print(f"[ERREUR] lors de l'initialisation: {str(e)}")
+        raise e
 
 # Initialiser le planificateur de tâches
 scheduler = BackgroundScheduler()
