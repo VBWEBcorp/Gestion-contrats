@@ -5,15 +5,10 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: |
       echo "=== DÉBUT DU DÉPLOIEMENT ===" &&
-      echo "=== VÉRIFICATION DE L'ENVIRONNEMENT ===" &&
-      echo "Python version:" &&
-      python --version &&
-      echo "Variables d'environnement disponibles:" &&
-      env | grep -i "database\|postgres" &&
       echo "=== INITIALISATION DE LA BASE DE DONNÉES ===" &&
       python init_render_db.py &&
       echo "=== DÉMARRAGE DU SERVEUR ===" &&
-      gunicorn app:app --bind 0.0.0.0:$PORT --log-level debug --timeout 120
+      gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
