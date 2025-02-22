@@ -4,6 +4,7 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: |
+      echo "=== DÉBUT DU DÉPLOIEMENT ===" &&
       echo "=== VÉRIFICATION DE L'ENVIRONNEMENT ===" &&
       echo "Python version:" &&
       python --version &&
