@@ -3,10 +3,12 @@ services:
     name: gestion-contrats
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    startCommand: python -c "from app import app, init_db; init_db()" && gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: gestion-contrats-db
@@ -14,4 +16,6 @@ services:
 
 databases:
   - name: gestion-contrats-db
+    databaseName: gestion_contrats
+    user: gestion_contrats
     plan: free

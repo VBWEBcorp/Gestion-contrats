@@ -31,34 +31,20 @@ scheduler.start()
 
 def init_db():
     with app.app_context():
-        # Vérifier si la table existe déjà
-        inspector = inspect(db.engine)
-        tables = inspector.get_table_names()
+        # Create all database tables
+        db.create_all()
         
-        if not tables:
-            # Si aucune table n'existe, créer toutes les tables
-            db.create_all()
-        else:
-            # Si les tables existent, ajouter les nouvelles colonnes si nécessaires
-            columns = [column['name'] for column in inspector.get_columns('client')]
-            if 'date_archivage' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(text('ALTER TABLE client ADD COLUMN date_archivage DATETIME'))
-                    conn.commit()
-            if 'commentaire' not in columns:
-                with db.engine.connect() as conn:
-                    conn.execute(text('ALTER TABLE client ADD COLUMN commentaire TEXT'))
-                    conn.commit()
-        
-        # Ajouter les types de prestation par défaut s'ils n'existent pas
-        types = ['SEO', 'Dev Web', 'Maintenance Dev Web', 'Maintenance Site Web', 'Site Internet']
-        for type_name in types:
-            if not TypePrestation.query.filter_by(nom=type_name).first():
-                db.session.add(TypePrestation(nom=type_name))
-        db.session.commit()
-
-        # Vérifier les contrats expirés au démarrage
-        check_expired_contracts(app)
+        # Check if TypePrestation table is empty
+        if not TypePrestation.query.first():
+            # Add default types if table is empty
+            default_types = [
+                TypePrestation(nom="Mensuel"),
+                TypePrestation(nom="Trimestriel"),
+                TypePrestation(nom="Semestriel"),
+                TypePrestation(nom="Annuel")
+            ]
+            db.session.add_all(default_types)
+            db.session.commit()
 
 @app.route('/')
 def index():
