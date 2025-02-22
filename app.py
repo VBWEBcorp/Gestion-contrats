@@ -55,7 +55,7 @@ def init_db():
             tables = inspector.get_table_names()
             print(f"Tables disponibles: {tables}")
 
-            # Ajouter les types de prestation par défaut
+            # Ajouter les types de prestation par défaut si la table est vide
             if not TypePrestation.query.first():
                 types = [
                     TypePrestation(nom="Mensuel"),
@@ -66,6 +66,8 @@ def init_db():
                 db.session.add_all(types)
                 db.session.commit()
                 print("✓ Types de prestation ajoutés")
+            else:
+                print("✓ Types de prestation déjà existants")
             
             print("=== INITIALISATION TERMINÉE AVEC SUCCÈS ===")
             return True
