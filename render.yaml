@@ -3,21 +3,30 @@ services:
     name: gestion-contrats
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: >
-      python -c "from app import app, db, init_db; 
+    startCommand: |
+      python -c "
+      from app import app, db, init_db;
+      print('Initialisation de la base de données...');
       with app.app_context():
           db.create_all();
-          init_db()" && 
-      gunicorn app:app
+          init_db();
+      print('Base de données initialisée avec succès')
+      " && gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: FLASK_APP
+        value: app.py
+      - key: FLASK_ENV
+        value: production
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
         fromDatabase:
           name: gestion-contrats-db
           property: connectionString
+      - key: PORT
+        value: 10000
 
 databases:
   - name: gestion-contrats-db

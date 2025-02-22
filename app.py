@@ -12,41 +12,49 @@ from openpyxl import Workbook
 import io
 
 app = Flask(__name__)
+
+# Configuration de la base de données
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+if not DATABASE_URL:
+    raise RuntimeError('DATABASE_URL environment variable is not set!')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'votre_clé_secrète_ici')
 
-# Database configuration
-if os.environ.get('DATABASE_URL'):
-    # Configuration for Render (PostgreSQL)
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
-else:
-    # Local configuration (SQLite)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gestion_contrats.db'
-
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 def init_db():
+    print("Début de l'initialisation de la base de données...")
     with app.app_context():
-        # Create all database tables
-        db.create_all()
-        
-        # Check if TypePrestation table is empty
-        if not TypePrestation.query.first():
-            # Add default types if table is empty
-            default_types = [
-                TypePrestation(nom="Mensuel"),
-                TypePrestation(nom="Trimestriel"),
-                TypePrestation(nom="Semestriel"),
-                TypePrestation(nom="Annuel")
-            ]
-            db.session.add_all(default_types)
-            try:
-                db.session.commit()
-            except Exception as e:
-                db.session.rollback()
-                print(f"Error adding default types: {e}")
+        try:
+            # Créer toutes les tables
+            db.create_all()
+            print("Tables créées avec succès")
 
-# Initialize scheduler
+            # Vérifier si les types de prestation existent déjà
+            if not TypePrestation.query.first():
+                print("Ajout des types de prestation par défaut...")
+                types = [
+                    TypePrestation(nom="Mensuel"),
+                    TypePrestation(nom="Trimestriel"),
+                    TypePrestation(nom="Semestriel"),
+                    TypePrestation(nom="Annuel")
+                ]
+                db.session.add_all(types)
+                db.session.commit()
+                print("Types de prestation ajoutés avec succès")
+            else:
+                print("Les types de prestation existent déjà")
+        except Exception as e:
+            print(f"Erreur lors de l'initialisation de la base de données: {str(e)}")
+            db.session.rollback()
+            raise
+
+# Initialiser le planificateur de tâches
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=lambda: check_expired_contracts(app), trigger="interval", hours=24)
 scheduler.start()
