@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0 fade-in">
+                <div class="card-header bg-gradient-primary-to-secondary text-white py-3">
+                    <h2 class="card-title mb-0 h4">
+                        <i class="bi bi-person-plus-fill me-2"></i>Nouveau Client
+                    </h2>
+                </div>
+                <div class="card-body p-4">
+                    <form method="POST" class="needs-validation floating-labels" novalidate>
+                        <!-- Informations du client -->
+                        <div class="row mb-4 slide-in">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="nom" name="nom" placeholder="Nom" required>
+                                    <label for="nom">Nom <span class="text-danger">*</span></label>
+                                    <div class="invalid-feedback">
+                                        Le nom est requis
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-floating">
+                                    <input type="text" class="form-control" id="entreprise" name="entreprise" placeholder="Entreprise">
+                                    <label for="entreprise">Entreprise</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dates -->
+                        <div class="row mb-4 slide-in" style="--delay: 0.1s">
+                            <div class="col-md-6 mb-3">
+                                <div class="form-floating">
+                                    <input type="date" class="form-control" id="date_debut" name="date_debut" required>
+                                    <label for="date_debut">Date de début <span class="text-danger">*</span></label>
+                                    <div class="invalid-feedback">
+                                        La date de début est requise
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-floating">
+                                    <input type="date" class="form-control" id="date_fin" name="date_fin">
+                                    <label for="date_fin">Date de fin</label>
+                                    <small class="text-muted">Optionnel pour les contrats à durée indéterminée</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Type de prestation et montant -->
+                        <div class="row mb-4 slide-in" style="--delay: 0.2s">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label mb-2">Types de prestation <span class="text-danger">*</span></label>
+                                <div class="prestations-container custom-scrollbar">
+                                    {% for type in types_prestation %}
+                                    <div class="form-check fancy-checkbox mb-2">
+                                        <input class="form-check-input" type="checkbox" name="prestations" value="{{ type.id }}" id="prestation{{ type.id }}">
+                                        <label class="form-check-label" for="prestation{{ type.id }}">
+                                            {{ type.nom }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="invalid-feedback">
+                                    Sélectionnez au moins un type de prestation
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <div class="form-floating">
+                                    <input type="number" step="0.01" class="form-control" id="montant" name="montant" placeholder="Montant" required>
+                                    <label for="montant">Montant (€) <span class="text-danger">*</span></label>
+                                    <div class="invalid-feedback">
+                                        Le montant est requis
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Commentaire -->
+                        <div class="mb-4 slide-in" style="--delay: 0.3s">
+                            <div class="form-floating">
+                                <textarea class="form-control" id="commentaire" name="commentaire" style="height: 100px" placeholder="Commentaire"></textarea>
+                                <label for="commentaire">Commentaire</label>
+                            </div>
+                        </div>
+
+                        <!-- Boutons -->
+                        <div class="d-flex justify-content-end gap-3 slide-in" style="--delay: 0.4s">
+                            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg px-4 ripple">
+                                <i class="bi bi-x-circle me-2"></i>Annuler
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg px-4 ripple">
+                                <i class="bi bi-check-circle me-2"></i>Enregistrer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validation du formulaire
+    const form = document.querySelector('.needs-validation');
+    
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        // Vérifier qu'au moins une prestation est sélectionnée
+        const prestations = document.querySelectorAll('input[name="prestations"]:checked');
+        if (prestations.length === 0) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.querySelector('.prestations-container').classList.add('is-invalid');
+        } else {
+            document.querySelector('.prestations-container').classList.remove('is-invalid');
+        }
+
+        form.classList.add('was-validated');
+    }, false);
+
+    // Formater le montant avec 2 décimales
+    const montantInput = document.getElementById('montant');
+    montantInput.addEventListener('change', function() {
+        if (this.value) {
+            this.value = parseFloat(this.value).toFixed(2);
+        }
+    });
+
+    // Empêcher la date de fin d'être antérieure à la date de début
+    const dateDebut = document.getElementById('date_debut');
+    const dateFin = document.getElementById('date_fin');
+    
+    dateDebut.addEventListener('change', function() {
+        dateFin.min = this.value;
+    });
+
+    dateFin.addEventListener('change', function() {
+        if (this.value && this.value < dateDebut.value) {
+            this.value = dateDebut.value;
+        }
+    });
+
+    // Effet ripple sur les boutons
+    document.querySelectorAll('.ripple').forEach(button => {
+        button.addEventListener('click', function(e) {
+            const ripple = document.createElement('span');
+            const rect = button.getBoundingClientRect();
+            
+            ripple.style.left = `${e.clientX - rect.left}px`;
+            ripple.style.top = `${e.clientY - rect.top}px`;
+            ripple.className = 'ripple-effect';
+            
+            button.appendChild(ripple);
+            
+            setTimeout(() => ripple.remove(), 1000);
+        });
+    });
+});
+</script>
+
+<style>
+/* Variables */
+:root {
+    --primary: #4e73df;
+    --primary-dark: #2e59d9;
+    --secondary: #858796;
+    --success: #1cc88a;
+    --info: #36b9cc;
+    --warning: #f6c23e;
+    --danger: #e74a3b;
+    --light: #f8f9fc;
+    --dark: #5a5c69;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+.slide-in {
+    opacity: 0;
+    animation: slideIn 0.5s ease-out forwards;
+    animation-delay: var(--delay, 0s);
+}
+
+/* Gradient d'arrière-plan */
+.bg-gradient-primary-to-secondary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+}
+
+/* Floating labels */
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    color: var(--primary);
+}
+
+/* Fancy checkboxes */
+.fancy-checkbox .form-check-input {
+    width: 1.5em;
+    height: 1.5em;
+    margin-top: 0.25em;
+    transition: all 0.2s ease-in-out;
+}
+
+.fancy-checkbox .form-check-input:checked {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    transform: scale(1.1);
+}
+
+.fancy-checkbox .form-check-label {
+    padding-left: 0.5em;
+    font-size: 1rem;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar {
+    max-height: 150px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--light);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: var(--light);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+    border-radius: 3px;
+}
+
+/* Effet ripple */
+.ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple-effect {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.5);
+    transform: scale(0);
+    animation: ripple 1s linear;
+    pointer-events: none;
+}
+
+@keyframes ripple {
+    to {
+        transform: scale(4);
+        opacity: 0;
+    }
+}
+
+/* Styles de base améliorés */
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+.btn {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.prestations-container {
+    border: 1px solid #ced4da;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    background: var(--light);
+    transition: all 0.3s ease;
+}
+
+.prestations-container:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.1);
+}
+
+.card {
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .d-flex.justify-content-end {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}

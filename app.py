@@ -1,8 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, Response
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
-from dotenv import load_dotenv
 from extensions import db
 from models import Client, TypePrestation
 from sqlalchemy import inspect, text
@@ -13,59 +11,46 @@ import csv
 from openpyxl import Workbook
 import io
 
-# Charger les variables d'environnement depuis le fichier .env
-load_dotenv()
-
-# Initialisation de Flask
 app = Flask(__name__)
-
-# Configuration de la base de données
-def configure_database():
-    print("=== CONFIGURATION DE LA BASE DE DONNÉES ===")
-    database_url = os.environ.get('DATABASE_URL')
-    print(f"DATABASE_URL brute: {database_url}")
-    
-    if database_url and database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    
-    if not database_url:
-        raise ValueError("DATABASE_URL n'est pas définie!")
-    
-    print(f"URL finale de la base de données: {database_url}")
-    return database_url
-
-# Configuration de l'application
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-key-dev')
-app.config['SQLALCHEMY_DATABASE_URI'] = configure_database()
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Initialisation des extensions
+app.config['SECRET_KEY'] = 'votre_clé_secrète_ici'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///gestion_contrats.db'
 db.init_app(app)
-
-def init_db():
-    """Initialise la base de données."""
-    try:
-        print("=== DEBUT INITIALISATION BASE DE DONNEES ===")
-        
-        # Création des tables
-        with app.app_context():
-            inspector = inspect(db.engine)
-            if not inspector.has_table("client"):
-                db.create_all()
-                print("[OK] Tables créées avec succès")
-            else:
-                print("[OK] Les tables existent déjà")
-        
-        print("[OK] Connexion à la base de données établie")
-        
-    except Exception as e:
-        print(f"[ERREUR] lors de l'initialisation: {str(e)}")
-        raise e
 
 # Initialiser le planificateur de tâches
 scheduler = BackgroundScheduler()
 scheduler.add_job(func=lambda: check_expired_contracts(app), trigger="interval", hours=24)
 scheduler.start()
+
+def init_db():
+    with app.app_context():
+        # Vérifier si la table existe déjà
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        if not tables:
+            # Si aucune table n'existe, créer toutes les tables
+            db.create_all()
+        else:
+            # Si les tables existent, ajouter les nouvelles colonnes si nécessaires
+            columns = [column['name'] for column in inspector.get_columns('client')]
+            if 'date_archivage' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE client ADD COLUMN date_archivage DATETIME'))
+                    conn.commit()
+            if 'commentaire' not in columns:
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE client ADD COLUMN commentaire TEXT'))
+                    conn.commit()
+        
+        # Ajouter les types de prestation par défaut s'ils n'existent pas
+        types = ['SEO', 'Dev Web', 'Maintenance Dev Web', 'Maintenance Site Web', 'Site Internet']
+        for type_name in types:
+            if not TypePrestation.query.filter_by(nom=type_name).first():
+                db.session.add(TypePrestation(nom=type_name))
+        db.session.commit()
+
+        # Vérifier les contrats expirés au démarrage
+        check_expired_contracts(app)
 
 @app.route('/')
 def index():
