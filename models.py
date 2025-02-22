@@ -1,11 +1,11 @@
 from extensions import db
 from datetime import datetime
 
-class TypePrestation(db.Model):
-    __tablename__ = 'type_prestation'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    nom = db.Column(db.String(50), unique=True, nullable=False)
+# Table d'association pour la relation many-to-many entre Client et TypePrestation
+client_prestation = db.Table('client_prestation',
+    db.Column('client_id', db.Integer, db.ForeignKey('client.id'), primary_key=True),
+    db.Column('type_prestation_id', db.Integer, db.ForeignKey('type_prestation.id'), primary_key=True)
+)
 
 class Client(db.Model):
     __tablename__ = 'client'
@@ -21,9 +21,15 @@ class Client(db.Model):
     actif = db.Column(db.Boolean, default=True)
     date_archivage = db.Column(db.Date)
     commentaire = db.Column(db.Text)
+    
+    # Relation many-to-many avec TypePrestation
+    prestations = db.relationship('TypePrestation', 
+                                secondary=client_prestation,
+                                lazy='dynamic',
+                                backref=db.backref('clients', lazy=True))
 
-# Table d'association pour la relation many-to-many entre Client et TypePrestation
-client_prestation = db.Table('client_prestation',
-    db.Column('client_id', db.Integer, db.ForeignKey('client.id'), primary_key=True),
-    db.Column('type_prestation_id', db.Integer, db.ForeignKey('type_prestation.id'), primary_key=True)
-)
+class TypePrestation(db.Model):
+    __tablename__ = 'type_prestation'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(50), unique=True, nullable=False)

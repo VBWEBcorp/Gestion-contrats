@@ -30,6 +30,7 @@ def init_db():
                 # Table client
                 logger.info("Création de la table client...")
                 conn.execute(text("""
+                DROP TABLE IF EXISTS client_prestation CASCADE;
                 DROP TABLE IF EXISTS client CASCADE;
                 CREATE TABLE client (
                     id SERIAL PRIMARY KEY,
@@ -53,6 +54,16 @@ def init_db():
                 CREATE TABLE type_prestation (
                     id SERIAL PRIMARY KEY,
                     nom VARCHAR(50) UNIQUE NOT NULL
+                );
+                """))
+                
+                # Table d'association client_prestation
+                logger.info("Création de la table d'association client_prestation...")
+                conn.execute(text("""
+                CREATE TABLE client_prestation (
+                    client_id INTEGER REFERENCES client(id),
+                    type_prestation_id INTEGER REFERENCES type_prestation(id),
+                    PRIMARY KEY (client_id, type_prestation_id)
                 );
                 """))
                 
